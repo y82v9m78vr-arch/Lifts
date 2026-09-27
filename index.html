@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<title>Training Log</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #ffffff;
+    --ink: #000000;
+    --panel: #f5f5f5;
+    --rule: #d9d9d9;
+    --muted: #737373;
+    --hit: #000000;
+    --miss: #ffffff;
+    box-sizing: border-box;
+  }
+  * { box-sizing: inherit; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    height: 100%;
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+  body {
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+  }
+  .mono { font-family: 'IBM Plex Mono', 'SF Mono', monospace; font-variant-numeric: tabular-nums; }
+
+  header {
+    padding: 22px 20px 16px;
+    border-bottom: 1px solid var(--ink);
+    flex-shrink: 0;
+  }
+  header .date-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+  header .weekday {
+    font-size: 26px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+  header .date {
+    font-size: 13px;
+    color: var(--muted);
+  }
+  header .assignment {
+    margin-top: 4px;
+    font-size: 15px;
+    color: var(--muted);
+  }
+
+  main {
+    flex: 1;
+    overflow-y: auto;
+    padding-bottom: 24px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .section {
+    border-bottom: 1px solid var(--rule);
+    padding: 16px 20px;
+  }
+  .section:last-child { border-bottom: none; }
+
+  .lift-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+  .lift-name {
+    font-size: 16px;
+    font-weight: 500;
+  }
+  .lift-weight {
+    font-size: 15px;
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+  }
+  .lift-weight .from { color: var(--muted); }
+  .lift-weight .arrow { color: var(--muted); font-size: 12px; }
+  .lift-weight .to { font-weight: 600; }
+  .stall-flag {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 1px 6px;
+    border: 1px solid var(--ink);
+    font-size: 10px;
+    font-family: 'IBM Plex Mono', monospace;
+    text-transform: lowercase;
+  }
+
+  .sets-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 4px;
+  }
+  .set-box {
+    width: 34px;
+    height: 34px;
+    border: 1.5px solid var(--ink);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.12s ease, color 0.12s ease;
+  }
+  .set-box.hit {
+    background: var(--ink);
+    color: var(--bg);
+  }
+  .reps-input {
+    width: 46px;
+    border: none;
+    border-bottom: 1px solid var(--rule);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    text-align: center;
+    padding: 4px 0;
+    background: transparent;
+    color: var(--ink);
+  }
+  .reps-input:focus { outline: none; border-bottom-color: var(--ink); }
+  .reps-label { font-size: 11px; color: var(--muted); margin-left: 2px; }
+
+  .deload-btn {
+    margin-top: 6px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    background: none;
+    border: 1px solid var(--ink);
+    padding: 4px 8px;
+    color: var(--ink);
+    cursor: pointer;
+  }
+
+  .finisher-row, .cardio-row, .steps-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .finisher-label, .cardio-label { font-size: 15px; }
+  .check-toggle {
+    width: 28px;
+    height: 28px;
+    border: 1.5px solid var(--ink);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 14px;
+  }
+  .check-toggle.on { background: var(--ink); color: var(--bg); }
+
+  .steps-input {
+    width: 90px;
+    border: none;
+    border-bottom: 1px solid var(--ink);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 18px;
+    text-align: right;
+    padding: 4px 0;
+    background: transparent;
+    color: var(--ink);
+  }
+  .steps-input:focus { outline: none; }
+  .steps-target { font-size: 13px; color: var(--muted); }
+
+  .cardio-duration {
+    width: 60px;
+    border: none;
+    border-bottom: 1px solid var(--ink);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 16px;
+    text-align: right;
+    background: transparent;
+    color: var(--ink);
+  }
+  .cardio-duration:focus { outline: none; }
+
+  .rounds-picker {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+  }
+  .round-dot {
+    width: 26px;
+    height: 26px;
+    border: 1.5px solid var(--ink);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+  }
+  .round-dot.on { background: var(--ink); color: var(--bg); }
+
+  .notes-field {
+    width: 100%;
+    border: none;
+    border-bottom: 1px solid var(--rule);
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 14px;
+    padding: 8px 0;
+    background: transparent;
+    color: var(--ink);
+    resize: none;
+  }
+  .notes-field:focus { outline: none; border-bottom-color: var(--ink); }
+  .notes-field::placeholder { color: var(--muted); }
+
+  .save-btn {
+    margin: 16px 20px 8px;
+    padding: 14px;
+    background: var(--ink);
+    color: var(--bg);
+    border: none;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    width: calc(100% - 40px);
+  }
+  .save-btn:active { opacity: 0.8; }
+  .saved-note {
+    text-align: center;
+    font-size: 12px;
+    color: var(--muted);
+    font-family: 'IBM Plex Mono', monospace;
+    padding-bottom: 8px;
+  }
+
+  .rest-message {
+    padding: 60px 20px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 15px;
+  }
+
+  /* Week view */
+  .week-strip {
+    display: flex;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--rule);
+  }
+  .day-chip {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--muted);
+  }
+  .day-chip .dot {
+    width: 20px;
+    height: 20px;
+    border: 1.5px solid var(--rule);
+  }
+  .day-chip .dot.done { background: var(--ink); border-color: var(--ink); }
+  .day-chip.today { color: var(--ink); font-weight: 600; }
+  .day-chip.today .dot { border-color: var(--ink); }
+
+  .summary-line {
+    display: flex;
+    justify-content: space-between;
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--rule);
+    font-size: 15px;
+  }
+  .summary-line .num {
+    font-family: 'IBM Plex Mono', monospace;
+    font-weight: 600;
+  }
+
+  /* History */
+  .history-entry {
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--rule);
+  }
+  .history-date {
+    font-size: 12px;
+    color: var(--muted);
+    font-family: 'IBM Plex Mono', monospace;
+    margin-bottom: 4px;
+  }
+  .history-title { font-size: 15px; font-weight: 500; margin-bottom: 6px; }
+  .history-lift-line {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    padding: 2px 0;
+  }
+  .history-lift-line .name { color: var(--muted); }
+  .history-lift-line .val { font-family: 'IBM Plex Mono', monospace; }
+  .history-empty {
+    padding: 60px 20px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 14px;
+  }
+
+  nav {
+    display: flex;
+    border-top: 1px solid var(--ink);
+    flex-shrink: 0;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  nav button {
+    flex: 1;
+    padding: 14px 0 10px;
+    background: none;
+    border: none;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 13px;
+    color: var(--muted);
+    cursor: pointer;
+  }
+  nav button.active { color: var(--ink); font-weight: 600; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="date-row">
+    <span class="weekday" id="weekdayLabel"></span>
+    <span class="date mono" id="dateLabel"></span>
+  </div>
+  <div class="assignment" id="assignmentLabel"></div>
+</header>
+
+<main id="mainContent"></main>
+
+<nav>
+  <button class="tab-btn active" data-view="today">Today</button>
+  <button class="tab-btn" data-view="week">Week</button>
+  <button class="tab-btn" data-view="history">History</button>
+</nav>
+
+<script>
+(function() {
+  "use strict";
+
+  var STORAGE_KEY = 'trainingLogData';
+
+  var LIFT_DEFS = {
+    squat:        { name: 'Squat',                         start: 65, inc: 5 },
+    bench:        { name: 'Bench Press',                   start: 45, inc: 5 },
+    row:          { name: 'Row',                           start: 65, inc: 5 },
+    rdl:          { name: 'RDL',                           start: 95, inc: 10 },
+    ohp:          { name: 'Overhead Press',                start: 45, inc: 5 },
+    pulldown:     { name: 'Pull-up / Lat Pulldown',        start: 50, inc: 5 },
+    frontsquat:   { name: 'Front Squat / Goblet Squat',    start: 65, inc: 5 },
+    inclinebench: { name: 'Incline DB Bench',              start: 30, inc: 5 },
+    row2:         { name: 'Row (alt angle)',               start: 65, inc: 5 }
+  };
+
+  // weekday index: 0 = Monday ... 6 = Sunday
+  var SCHEDULE = [
+    { type: 'lift',   day: 'A', label: 'Lift A' },              // Mon
+    { type: 'cardio', kind: 'zone2', label: 'Zone 2 walk' },     // Tue
+    { type: 'lift',   day: 'B', label: 'Lift B' },              // Wed
+    { type: 'cardio', kind: 'interval', label: 'Incline intervals' }, // Thu
+    { type: 'lift',   day: 'C', label: 'Lift C' },              // Fri
+    { type: 'cardio', kind: 'zone2', label: 'Zone 2 walk' },     // Sat
+    { type: 'rest',   label: 'Rest' }                            // Sun
+  ];
+
+  var LIFT_DAY_LIFTS = {
+    A: ['squat', 'bench', 'row'],
+    B: ['rdl', 'ohp', 'pulldown'],
+    C: ['frontsquat', 'inclinebench', 'row2']
+  };
+
+  var WEEKDAY_NAMES = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+  var MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var STEPS_TARGET = 8000;
+
+  // ---------- data ----------
+  function loadData() {
+    try {
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) return JSON.parse(raw);
+    } catch (e) {}
+    var lifts = {};
+    Object.keys(LIFT_DEFS).forEach(function(k) {
+      lifts[k] = { weight: LIFT_DEFS[k].start, streak: 0 };
+    });
+    return { lifts: lifts, sessions: {} }; // sessions keyed by YYYY-MM-DD
+  }
+
+  function saveData() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    } catch (e) {}
+  }
+
+  var data = loadData();
+
+  // ---------- date helpers ----------
+  function fmtDate(d) {
+    var y = d.getFullYear();
+    var m = String(d.getMonth() + 1).padStart(2, '0');
+    var day = String(d.getDate()).padStart(2, '0');
+    return y + '-' + m + '-' + day;
+  }
+  function mondayIndex(d) {
+    // JS getDay: 0=Sun..6=Sat -> convert to 0=Mon..6=Sun
+    return (d.getDay() + 6) % 7;
+  }
+  function startOfWeek(d) {
+    var idx = mondayIndex(d);
+    var res = new Date(d);
+    res.setDate(d.getDate() - idx);
+    res.setHours(0,0,0,0);
+    return res;
+  }
+  function addDays(d, n) {
+    var res = new Date(d);
+    res.setDate(d.getDate() + n);
+    return res;
+  }
+
+  var today = new Date();
+  var todayKey = fmtDate(today);
+  var currentViewDate = new Date(today); // used for today-view (always today, but keep for clarity)
+
+  function getSession(dateKey) {
+    if (!data.sessions[dateKey]) {
+      data.sessions[dateKey] = {};
+    }
+    return data.sessions[dateKey];
+  }
+
+  // ---------- rendering: header ----------
+  function renderHeader() {
+    var idx = mondayIndex(today);
+    var sched = SCHEDULE[idx];
+    document.getElementById('weekdayLabel').textContent = WEEKDAY_NAMES[idx];
+    document.getElementById('dateLabel').textContent =
+      MONTH_NAMES[today.getMonth()] + ' ' + today.getDate();
+    document.getElementById('assignmentLabel').textContent = sched.label;
+  }
+
+  // ---------- Today view ----------
+  function renderToday() {
+    var idx = mondayIndex(today);
+    var sched = SCHEDULE[idx];
+    var session = getSession(todayKey);
+    var main = document.getElementById('mainContent');
+    main.innerHTML = '';
+
+    if (sched.type === 'rest') {
+      main.innerHTML = '<div class="rest-message">Rest day. No lifting, no scheduled cardio.<br><br>Log steps if you want.</div>' +
+        stepsSectionHTML(session);
+      wireStepsSection(session);
+      return;
+    }
+
+    if (sched.type === 'lift') {
+      if (!session.liftEntries) {
+        session.liftEntries = {};
+        LIFT_DAY_LIFTS[sched.day].forEach(function(key) {
+          session.liftEntries[key] = { setsHit: [false,false,false], reps: '', targetWeight: data.lifts[key].weight };
+        });
+      }
+      if (session.finisherDone === undefined) session.finisherDone = false;
+
+      var html = '';
+      LIFT_DAY_LIFTS[sched.day].forEach(function(key) {
+        var def = LIFT_DEFS[key];
+        var liftState = data.lifts[key];
+        var entry = session.liftEntries[key];
+        var stalled = liftState.streak >= 2;
+        var nextWeight = liftState.weight + def.inc;
+
+        html += '<div class="section" data-lift="' + key + '">';
+        html += '  <div class="lift-row">';
+        html += '    <span class="lift-name">' + def.name + (stalled ? '<span class="stall-flag">stalled</span>' : '') + '</span>';
+        html += '    <span class="lift-weight mono"><span class="from">' + liftState.weight + '</span><span class="arrow">&#8594;</span><span class="to">' + nextWeight + '</span> lb</span>';
+        html += '  </div>';
+        html += '  <div class="sets-row">';
+        for (var i = 0; i < 3; i++) {
+          html += '<div class="set-box' + (entry.setsHit[i] ? ' hit' : '') + '" data-set="' + i + '">' + (entry.setsHit[i] ? '&#10003;' : (i+1)) + '</div>';
+        }
+        html += '    <input class="reps-input" type="number" inputmode="numeric" placeholder="reps" value="' + entry.reps + '">';
+        html += '    <span class="reps-label">reps/set</span>';
+        html += '  </div>';
+        if (stalled) {
+          html += '  <button class="deload-btn" data-deload="' + key + '">Deload 10% &amp; reset</button>';
+        }
+        html += '</div>';
+      });
+
+      html += '<div class="section">';
+      html += '  <div class="finisher-row">';
+      html += '    <span class="finisher-label">Finisher — lunges + push-ups, 2 rounds</span>';
+      html += '    <div class="check-toggle' + (session.finisherDone ? ' on' : '') + '" id="finisherToggle">' + (session.finisherDone ? '&#10003;' : '') + '</div>';
+      html += '  </div>';
+      html += '</div>';
+
+      html += stepsSectionHTML(session);
+      html += notesSectionHTML(session);
+      html += '<button class="save-btn" id="saveBtn">Save session</button>';
+      html += '<div class="saved-note" id="savedNote"></div>';
+
+      main.innerHTML = html;
+      wireLiftDay(sched, session);
+      wireStepsSection(session);
+      wireNotesSection(session);
+
+      document.getElementById('saveBtn').addEventListener('click', function() {
+        commitLiftSession(sched, session);
+      });
+      return;
+    }
+
+    if (sched.type === 'cardio') {
+      if (!session.cardio) {
+        session.cardio = { kind: sched.kind, duration: '', rounds: 0, done: false };
+      }
+      var c = session.cardio;
+      var html2 = '<div class="section">';
+      if (sched.kind === 'zone2') {
+        html2 += '  <div class="cardio-row">';
+        html2 += '    <span class="cardio-label">Zone 2 walk</span>';
+        html2 += '    <span class="mono"><input class="cardio-duration" type="number" inputmode="numeric" id="durationInput" value="' + c.duration + '"> min</span>';
+        html2 += '  </div>';
+      } else {
+        html2 += '  <div class="cardio-label">Incline intervals — 30s hard / 90s easy</div>';
+        html2 += '  <div class="rounds-picker" id="roundsPicker">';
+        for (var r = 1; r <= 10; r++) {
+          html2 += '<div class="round-dot' + (r <= c.rounds ? ' on' : '') + '" data-round="' + r + '">' + r + '</div>';
+        }
+        html2 += '  </div>';
+      }
+      html2 += '</div>';
+      html2 += stepsSectionHTML(session);
+      html2 += notesSectionHTML(session);
+      html2 += '<button class="save-btn" id="saveBtn">Save session</button>';
+      html2 += '<div class="saved-note" id="savedNote"></div>';
+
+      main.innerHTML = html2;
+      wireStepsSection(session);
+      wireNotesSection(session);
+
+      if (sched.kind === 'zone2') {
+        document.getElementById('durationInput').addEventListener('input', function(e) {
+          c.duration = e.target.value;
+        });
+      } else {
+        document.getElementById('roundsPicker').addEventListener('click', function(e) {
+          var el = e.target.closest('.round-dot');
+          if (!el) return;
+          var r = parseInt(el.getAttribute('data-round'), 10);
+          c.rounds = (c.rounds === r) ? r - 1 : r; // tap same top dot to reduce by one
+          renderToday();
+        });
+      }
+
+      document.getElementById('saveBtn').addEventListener('click', function() {
+        c.done = true;
+        saveData();
+        flashSaved();
+      });
+    }
+  }
+
+  function stepsSectionHTML(session) {
+    if (session.steps === undefined) session.steps = '';
+    return '<div class="section">' +
+      '  <div class="steps-row">' +
+      '    <span class="cardio-label">Steps</span>' +
+      '    <span><input class="steps-input" type="number" inputmode="numeric" id="stepsInput" value="' + session.steps + '"> <span class="steps-target mono">/ ' + STEPS_TARGET.toLocaleString() + '</span></span>' +
+      '  </div>' +
+      '</div>';
+  }
+  function wireStepsSection(session) {
+    var el = document.getElementById('stepsInput');
+    if (el) el.addEventListener('input', function(e) {
+      session.steps = e.target.value;
+      saveData();
+    });
+  }
+
+  function notesSectionHTML(session) {
+    if (session.notes === undefined) session.notes = '';
+    return '<div class="section">' +
+      '  <textarea class="notes-field" id="notesField" rows="2" placeholder="Notes (optional)">' + session.notes + '</textarea>' +
+      '</div>';
+  }
+  function wireNotesSection(session) {
+    var el = document.getElementById('notesField');
+    if (el) el.addEventListener('input', function(e) {
+      session.notes = e.target.value;
+    });
+  }
+
+  function wireLiftDay(sched, session) {
+    var main = document.getElementById('mainContent');
+    main.querySelectorAll('.set-box').forEach(function(box) {
+      box.addEventListener('click', function() {
+        var liftKey = box.closest('[data-lift]').getAttribute('data-lift');
+        var setIdx = parseInt(box.getAttribute('data-set'), 10);
+        var entry = session.liftEntries[liftKey];
+        entry.setsHit[setIdx] = !entry.setsHit[setIdx];
+        renderToday();
+      });
+    });
+    main.querySelectorAll('.reps-input').forEach(function(input) {
+      input.addEventListener('input', function(e) {
+        var liftKey = input.closest('[data-lift]').getAttribute('data-lift');
+        session.liftEntries[liftKey].reps = e.target.value;
+      });
+    });
+    main.querySelectorAll('[data-deload]').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var key = btn.getAttribute('data-deload');
+        data.lifts[key].weight = Math.round((data.lifts[key].weight * 0.9) / 5) * 5;
+        data.lifts[key].streak = 0;
+        saveData();
+        renderToday();
+      });
+    });
+    var finisherToggle = document.getElementById('finisherToggle');
+    if (finisherToggle) {
+      finisherToggle.addEventListener('click', function() {
+        session.finisherDone = !session.finisherDone;
+        renderToday();
+      });
+    }
+  }
+
+  function commitLiftSession(sched, session) {
+    LIFT_DAY_LIFTS[sched.day].forEach(function(key) {
+      var entry = session.liftEntries[key];
+      var allHit = entry.setsHit.every(function(v) { return v; });
+      var liftState = data.lifts[key];
+      entry.loggedWeight = liftState.weight;
+      if (allHit) {
+        liftState.weight += LIFT_DEFS[key].inc;
+        liftState.streak = 0;
+      } else {
+        liftState.streak += 1;
+      }
+    });
+    session.completed = true;
+    saveData();
+    flashSaved();
+    renderToday();
+  }
+
+  function flashSaved() {
+    var note = document.getElementById('savedNote');
+    if (note) {
+      note.textContent = 'Saved';
+      setTimeout(function() { if (note) note.textContent = ''; }, 1500);
+    }
+  }
+
+  // ---------- Week view ----------
+  function renderWeek() {
+    var main = document.getElementById('mainContent');
+    var weekStart = startOfWeek(today);
+    var html = '<div class="week-strip">';
+    var lifts = 0, cardios = 0, stepsHit = 0;
+    var liftTotal = 0, cardioTotal = 0;
+
+    for (var i = 0; i < 7; i++) {
+      var d = addDays(weekStart, i);
+      var key = fmtDate(d);
+      var sched = SCHEDULE[i];
+      var s = data.sessions[key];
+      var done = false;
+      if (sched.type === 'lift') {
+        liftTotal++;
+        done = !!(s && s.completed);
+        if (done) lifts++;
+      } else if (sched.type === 'cardio') {
+        cardioTotal++;
+        done = !!(s && s.cardio && s.cardio.done);
+        if (done) cardios++;
+      }
+      if (s && s.steps && parseInt(s.steps, 10) >= STEPS_TARGET) stepsHit++;
+
+      var isToday = key === todayKey;
+      html += '<div class="day-chip' + (isToday ? ' today' : '') + '">';
+      html += '<span>' + WEEKDAY_NAMES[i].slice(0,1) + '</span>';
+      html += '<span class="dot' + (done ? ' done' : '') + '"></span>';
+      html += '</div>';
+    }
+    html += '</div>';
+
+    html += '<div class="summary-line"><span>Lifts</span><span class="num">' + lifts + ' / ' + liftTotal + '</span></div>';
+    html += '<div class="summary-line"><span>Cardio</span><span class="num">' + cardios + ' / ' + cardioTotal + '</span></div>';
+    html += '<div class="summary-line"><span>Steps target hit</span><span class="num">' + stepsHit + ' / 7</span></div>';
+
+    main.innerHTML = html;
+  }
+
+  // ---------- History view ----------
+  function renderHistory() {
+    var main = document.getElementById('mainContent');
+    var keys = Object.keys(data.sessions).sort().reverse();
+    if (keys.length === 0) {
+      main.innerHTML = '<div class="history-empty">No sessions logged yet.</div>';
+      return;
+    }
+    var html = '';
+    keys.forEach(function(key) {
+      var s = data.sessions[key];
+      var d = new Date(key + 'T00:00:00');
+      var idx = mondayIndex(d);
+      var sched = SCHEDULE[idx];
+
+      if (sched.type === 'lift' && s.liftEntries) {
+        html += '<div class="history-entry">';
+        html += '<div class="history-date mono">' + MONTH_NAMES[d.getMonth()] + ' ' + d.getDate() + '</div>';
+        html += '<div class="history-title">' + sched.label + (s.completed ? '' : ' (in progress)') + '</div>';
+        LIFT_DAY_LIFTS[sched.day].forEach(function(key2) {
+          var entry = s.liftEntries[key2];
+          if (!entry) return;
+          var w = entry.loggedWeight !== undefined ? entry.loggedWeight : entry.targetWeight;
+          html += '<div class="history-lift-line"><span class="name">' + LIFT_DEFS[key2].name + '</span><span class="val">' + w + ' lb</span></div>';
+        });
+        if (s.steps) html += '<div class="history-lift-line"><span class="name">Steps</span><span class="val">' + s.steps + '</span></div>';
+        if (s.notes) html += '<div class="history-lift-line"><span class="name">Notes</span><span class="val" style="font-family:\'Space Grotesk\',sans-serif;">' + s.notes + '</span></div>';
+        html += '</div>';
+      } else if (sched.type === 'cardio' && s.cardio) {
+        html += '<div class="history-entry">';
+        html += '<div class="history-date mono">' + MONTH_NAMES[d.getMonth()] + ' ' + d.getDate() + '</div>';
+        html += '<div class="history-title">' + sched.label + '</div>';
+        if (sched.kind === 'zone2' && s.cardio.duration) {
+          html += '<div class="history-lift-line"><span class="name">Duration</span><span class="val">' + s.cardio.duration + ' min</span></div>';
+        }
+        if (sched.kind === 'interval') {
+          html += '<div class="history-lift-line"><span class="name">Rounds</span><span class="val">' + (s.cardio.rounds||0) + ' / 10</span></div>';
+        }
+        if (s.steps) html += '<div class="history-lift-line"><span class="name">Steps</span><span class="val">' + s.steps + '</span></div>';
+        html += '</div>';
+      } else if (s.steps) {
+        html += '<div class="history-entry">';
+        html += '<div class="history-date mono">' + MONTH_NAMES[d.getMonth()] + ' ' + d.getDate() + '</div>';
+        html += '<div class="history-title">' + sched.label + '</div>';
+        html += '<div class="history-lift-line"><span class="name">Steps</span><span class="val">' + s.steps + '</span></div>';
+        html += '</div>';
+      }
+    });
+    main.innerHTML = html || '<div class="history-empty">No sessions logged yet.</div>';
+  }
+
+  // ---------- nav ----------
+  var currentView = 'today';
+  function setView(view) {
+    currentView = view;
+    document.querySelectorAll('.tab-btn').forEach(function(b) {
+      b.classList.toggle('active', b.getAttribute('data-view') === view);
+    });
+    if (view === 'today') renderToday();
+    else if (view === 'week') renderWeek();
+    else if (view === 'history') renderHistory();
+  }
+  document.querySelectorAll('.tab-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      setView(btn.getAttribute('data-view'));
+    });
+  });
+
+  renderHeader();
+  setView('today');
+})();
+</script>
+</body>
+</html>
